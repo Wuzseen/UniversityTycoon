@@ -62,9 +62,9 @@ public class TopDownCameraRig : MonoBehaviour
     // Update is called once per frame
     void Update ()
     {
-        float orbit = Input.GetAxis("Orbit");
         bool camModifier = Input.GetButton("CameraModifier");
 
+        float orbit = Input.GetAxis("Orbit");
         float orbitValue = orbit * rotateSpeed * Time.deltaTime;
         Transform orbitTarget = RigRoot;
         Space s = Space.Self;
