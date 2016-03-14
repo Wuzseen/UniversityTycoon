@@ -1,0 +1,12 @@
+# Unity .gitignore file.
+.DS_Store
+Library
+Library/*
+*.csproj
+*.sln
+*.unityproj
+*.userprefs
+*.unityproj
+Temp
+*.pidb
+Build
