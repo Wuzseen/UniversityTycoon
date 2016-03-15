@@ -1,5 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections;
+using DG.Tweening;
+
 
 public class TopDownCameraRig : MonoBehaviour
 {
@@ -52,41 +54,110 @@ public class TopDownCameraRig : MonoBehaviour
             mainCameraControl = value;
         }
     }
+    
+    private Vector3 startMainRotateEuler;
 
-    // Use this for initialization
-    void Start ()
+    void Start()
     {
+        startMainRotateEuler = MainCameraControl.rotation.eulerAngles;
+        StartCoroutine(CameraController());
 
     }
 
-    // Update is called once per frame
-    void Update ()
+    bool rotationResetting = false;
+    IEnumerator ResetRotation()
     {
-        bool camModifier = Input.GetButton("CameraModifier");
-
-        float orbit = Input.GetAxis("Orbit");
-        float orbitValue = orbit * rotateSpeed * Time.deltaTime;
-        Transform orbitTarget = RigRoot;
-        Space s = Space.Self;
-        if(camModifier)
+        rotationResetting = true;
+        float resetTime = .5f;
+        Tween orbitReset = RigRoot.DORotate(Vector3.zero, resetTime);
+        Tween rotateReset = MainCameraControl.DORotate(startMainRotateEuler, resetTime);
+        while(Input.GetButton("ResetRotation"))
         {
-            orbitTarget = MainCameraControl;
-            s = Space.World;
+            if(orbitReset.IsComplete())
+            {
+                break;
+            }
+            yield return null;
         }
-        orbitTarget.Rotate(Vector3.up * orbitValue, s);
+        orbitReset.Kill();
+        rotateReset.Kill();
+        rotationResetting = false;
+    }
 
-        float horizontal = Input.GetAxis("Horizontal");
-        float forward = Input.GetAxis("Forward");
-        Vector3 translate = new Vector3(horizontal, 0f, forward) * Time.deltaTime * panSpeed;
-        RigRoot.position = RigRoot.position + translate;
-
-        float zoom = Input.GetAxis("Mouse ScrollWheel");
-        Vector3 dir = MainCameraControl.forward;
-        Vector3 targetPosition = MainCameraControl.position + dir * zoom * zoomSpeed * Time.deltaTime;
-        float camDist = Vector3.Distance(RigRoot.position, targetPosition);
-        if (camDist < maxZoomDistance && camDist > minZoomDistance)
+    private bool goingHome = false;
+    IEnumerator CamHome()
+    {
+        goingHome = true;
+        float resetTime = .5f;
+        Tween homeReset = RigRoot.DOMove(Vector3.zero, resetTime);
+        while(Input.GetButton("Home"))
         {
-            MainCameraControl.position = targetPosition;
+            if(homeReset.IsComplete())
+            {
+                break;
+            }
+            yield return null;
+        }
+        homeReset.Kill();
+        goingHome = false;
+    }
+
+    IEnumerator CameraController()
+    {
+        while(true)
+        {
+            if(Input.GetButtonDown("ResetRotation"))
+            {
+                StartCoroutine(ResetRotation());
+            }
+            if(Input.GetButtonDown("Home"))
+            {
+                StartCoroutine(CamHome());
+            }
+
+            bool camModifier = Input.GetButton("CameraModifier");
+
+            if(!rotationResetting)
+            {
+                float orbit = Input.GetAxis("Orbit");
+                Transform orbitTarget = RigRoot;
+                Space s = Space.Self;
+                if (camModifier)
+                {
+                    orbit *= -1f;
+                    orbitTarget = MainCameraControl;
+                    s = Space.World;
+                }
+                float orbitValue = orbit * rotateSpeed * Time.deltaTime;
+                orbitTarget.Rotate(Vector3.up * orbitValue, s);
+            }
+
+            if(goingHome == false)
+            {
+                float horizontal = Input.GetAxis("Horizontal");
+                float forward = Input.GetAxis("Forward");
+                Vector3 forwardDirection = MainCameraControl.TransformDirection(Vector3.forward);
+                forwardDirection.y = 0f;
+                Vector3 forwardTranslate = forwardDirection * forward * Time.deltaTime * panSpeed;
+
+                Vector3 horizontalDirection = MainCameraControl.TransformDirection(Vector3.right);
+                Vector3 horizontalTranslate = horizontalDirection * horizontal * Time.deltaTime * panSpeed;
+
+                Vector3 translate = horizontalTranslate + forwardTranslate;
+
+                //Vector3 translate = new Vector3(horizontal, 0f, forward) * Time.deltaTime * panSpeed;
+                RigRoot.position = RigRoot.position + translate;
+            }
+
+            float zoom = Input.GetAxis("Mouse ScrollWheel");
+            Vector3 dir = MainCameraControl.forward;
+            Vector3 targetPosition = MainCameraControl.position + dir * zoom * zoomSpeed * Time.deltaTime;
+            float camDist = Vector3.Distance(RigRoot.position, targetPosition);
+            if (camDist < maxZoomDistance && camDist > minZoomDistance)
+            {
+                MainCameraControl.position = targetPosition;
+            }
+            yield return null;
         }
     }
 }
